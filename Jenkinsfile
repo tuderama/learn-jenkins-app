@@ -47,6 +47,7 @@ pipeline {
                 }
             }
             steps {
+                unstash 'buildCache'
                 sh '''
                 npm install netlify-cli
                 node_modules/.bin/netlify --version
