@@ -1,9 +1,9 @@
 pipeline {
     agent any
 
-    environment{
-        NETLIFY_SITE_ID='dd4a3d45-cf36-4501-89da-d19eec55628b'
-        NETLIFY_AUTH_TOKEN =credentials('netlify-token')
+    environment {
+        NETLIFY_SITE_ID = 'dd4a3d45-cf36-4501-89da-d19eec55628b'
+        NETLIFY_AUTH_TOKEN = credentials('netlify-token')
     }
 
     stages {
@@ -16,17 +16,18 @@ pipeline {
             }
             steps {
                 sh '''
-                ls -la
+                apk add --no-cache bash
                 node --version
                 npm --version
                 npm ci
-               
+                npm install netlify-cli
                 npm run build
-                ls -la
                 '''
+                stash includes: 'build/**,node_modules/**,package.json,package-lock.json', name: 'buildCache'
             }
         }
-        stage('Test'){
+
+        stage('Test') {
             agent {
                 docker {
                     image 'node:18-alpine'
@@ -34,12 +35,15 @@ pipeline {
                 }
             }
             steps {
+                unstash 'buildCache'
                 sh '''
+                apk add --no-cache bash
                 test -f build/index.html
                 npm test
                 '''
             }
         }
+
         stage('Deploy') {
             agent {
                 docker {
@@ -48,12 +52,14 @@ pipeline {
                 }
             }
             steps {
+                unstash 'buildCache'
                 sh '''
-                npm install netlify-cli
-                node_modules/.bin/netlify --version
+                apk add --no-cache bash
                 echo "Deploying to production. Site ID: $NETLIFY_SITE_ID"
+                node_modules/.bin/netlify --version
                 node_modules/.bin/netlify status
-                node_modules/.bin/netlify deploy --dir=build --prod --build=false
+                # Deploy hanya upload hasil build, tanpa build ulang di Netlify
+                node_modules/.bin/netlify deploy --prod --dir=build
                 '''
             }
         }
