@@ -12,20 +12,18 @@ pipeline {
                 docker {
                     image 'node:18-alpine'
                     reuseNode true
-                    // TAMBAHKAN BARIS INI UNTUK MENJALANKAN SEBAGAI ROOT
                     args '-u root'
                 }
             }
             steps {
                 sh '''
-                apk add --no-cache bash
-                ls -la
-                node --version
-                npm --version
+                apk update && apk add --no-cache bash
                 npm ci
                 npm run build
-                ls -la
                 '''
+                // LANGKAH BARU: Simpan direktori yang dibutuhkan untuk stage selanjutnya
+                echo "Stashing node_modules and build directories..."
+                stash name: 'build-artifacts', includes: 'build/, node_modules/'
             }
         }
         stage('Test'){
@@ -33,13 +31,14 @@ pipeline {
                 docker {
                     image 'node:18-alpine'
                     reuseNode true
-                    // TAMBAHKAN JUGA DI SINI
                     args '-u root'
                 }
             }
             steps {
+                // LANGKAH BARU: Kembalikan file yang dibutuhkan untuk testing
+                unstash 'build-artifacts'
                 sh '''
-                apk add --no-cache bash
+                apk update && apk add --no-cache bash
                 test -f build/index.html
                 npm test
                 '''
@@ -50,13 +49,16 @@ pipeline {
                 docker {
                     image 'node:18-alpine'
                     reuseNode true
-                    // TAMBAHKAN JUGA DI SINI
                     args '-u root'
                 }
             }
             steps {
+                // LANGKAH BARU: Kembalikan direktori sebelum menjalankan perintah deploy
+                echo "Unstashing artifacts..."
+                unstash 'build-artifacts'
+
                 sh '''
-                
+                apk update && apk add --no-cache bash
                 node_modules/.bin/netlify --version
                 echo "Deploying to production. Site ID: $NETLIFY_SITE_ID"
                 node_modules/.bin/netlify status
