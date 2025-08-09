@@ -12,20 +12,17 @@ pipeline {
                 docker {
                     image 'node:18-alpine'
                     reuseNode true
+                    // TAMBAHKAN BARIS INI UNTUK MENJALANKAN SEBAGAI ROOT
+                    args '-u root'
                 }
             }
             steps {
                 sh '''
-                # Instal bash SEBELUM menjalankan perintah lain
                 apk add --no-cache bash
-
                 ls -la
                 node --version
                 npm --version
-
-                # npm ci akan menginstal semua dependensi, termasuk netlify-cli jika ada di package.json
                 npm ci
-               
                 npm run build
                 ls -la
                 '''
@@ -36,13 +33,13 @@ pipeline {
                 docker {
                     image 'node:18-alpine'
                     reuseNode true
+                    // TAMBAHKAN JUGA DI SINI
+                    args '-u root'
                 }
             }
             steps {
                 sh '''
-                # Juga instal bash di sini untuk berjaga-jaga
                 apk add --no-cache bash
-
                 test -f build/index.html
                 npm test
                 '''
@@ -53,15 +50,13 @@ pipeline {
                 docker {
                     image 'node:18-alpine'
                     reuseNode true
+                    // TAMBAHKAN JUGA DI SINI
+                    args '-u root'
                 }
             }
             steps {
                 sh '''
-                # Instal bash di sini juga untuk memastikan netlify CLI berjalan lancar
                 apk add --no-cache bash
-
-                # Anda tidak perlu "npm install netlify-cli" lagi jika sudah ada di package.json
-                
                 node_modules/.bin/netlify --version
                 echo "Deploying to production. Site ID: $NETLIFY_SITE_ID"
                 node_modules/.bin/netlify status
